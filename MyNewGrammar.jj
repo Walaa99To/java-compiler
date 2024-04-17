@@ -1,0 +1,442 @@
+options{}
+PARSER_BEGIN(MyNewGrammar)
+package ass;
+public class MyNewGrammar
+{
+  public static void main(String args []) throws ParseException,java.io.FileNotFoundException
+  {
+    MyNewGrammar parser = new MyNewGrammar(
+      new java.io.FileInputStream("E:/test.txt")
+    );
+    AbstractTreeNode n = start();
+    n.execute(new Context());
+  }
+}
+PARSER_END(MyNewGrammar)
+SKIP :
+{
+  " "
+| "\r"
+| "\t"
+| "\n"
+}
+
+TOKEN :
+{ < Plus : "+" | "-" | "*" | "/" > 
+| < Number : (["0"-"9"])+ >
+| < Assignment: "=" >
+| < Semicolon: ";" >
+| < If: "if" >
+| < Else: "else" >
+| < ElseIf: "else if" >
+| < For: "for" >
+| < BREAK:"break" >
+| < CONTINUE:"continue" >
+| < While:"while" >
+| < DO:"do" >
+| < Switch:"switch" >
+| < Case:"case" >
+| < Default:"default" >
+| < Input: "System.in" >
+| < Output: "System.out.println" >
+| < True: "True" >
+| < False: "False" >
+| < Bool: "bool" >
+| < Int: "int" >
+| < String: "String" >
+| < Scanner: "Scanner" >
+| < New:"new" >
+| < Next:"next" >
+| < NextInt:"nextInt" >
+| < LeftParenthesis : "(" >
+| < RightParenthesis : ")" >
+| < LeftBrace : "{" >
+| < RightBrace : "}" >
+| < InputEnd: "end" >
+| < StringQuat:"'" >
+| < Dot:"." >
+| < DoubleDot: ":" >
+| < Compare: ">" | "<" | "==" >
+| < IncDec: "+=" | "-=" >
+| < Id: ["a"-"z","A"-"Z"] ( ["a"-"z","A"-"Z","0"-"9"] )* >
+}
+
+BlockNode start():
+{
+  BlockNode n = new BlockNode();
+  AbstractTreeNode c;
+}
+{
+  (
+    c = stmt() {n.addChild(c); }
+  )+< EOF >
+  {
+    System.out.println("Tree done"); 
+    return n;
+  }
+}
+
+AbstractTreeNode stmt():
+{
+  AbstractTreeNode n;
+}
+{
+  (n = ifStmt()  | n = assignStmt() | n=whileStmt2() | n=ForStmt() | n=dowhileStmt() | n=inputStmt() | n=outputStmt() | n=switchStmt() )
+{
+  return n;
+}
+}
+
+IfNode ifStmt():{
+  IfNode res = new IfNode();
+  AbstractTreeNode n=null, nn=null,n1=null;
+  BlockNode cn = new BlockNode();
+  BlockNode cn2 = new BlockNode();
+}{< If > <LeftParenthesis > (n = condition() | n=varCondition()) < RightParenthesis > < LeftBrace >
+( nn = assignStmt()
+  { cn.addChild(nn);
+  res.addChild(n);
+    res.addChild(cn);}
+  | nn=expr() < Semicolon >
+    {res.addChild(n);
+    res.addChild(nn);}
+)
+< RightBrace >{System.out.println("if done");    }
+  (< Else > < LeftBrace > n1=assignStmt() < RightBrace >
+    {      cn2.addChild(n1);
+    res.setbool(true);
+    res.addChild(cn2);
+      System.out.println("else done");  }  )?  
+  < InputEnd >
+  {return res;  }}
+  
+ConditionNode condition():
+{
+  ConditionNode n = new ConditionNode();
+  AbstractTreeNode n1,n2;
+  Token t;
+}
+{
+n1 = N() t = < Compare > n2 = N()
+{
+  n.addChild(n1);
+  n.addChild(n2);
+  n.setOperator(t.image);
+  return n;
+} 
+}
+
+AssignNode assignStmt():
+{
+  Token t,t1=null,t2=null;
+  AssignNode anode = new AssignNode();
+  AbstractTreeNode n;
+  whileNode wRes=new whileNode();
+}
+{
+t = < Id > (t1=<Assignment > | t2=< IncDec >)
+(n = N() {anode.setType("Double"); } | n = StrN() {anode.setType("String"); } | n = BoolN() {anode.setType("Boolean"); }) < Semicolon >
+{anode.setVarName(t.image);
+  anode.addChild(n);
+  return anode;}
+| < String > t= < Id > <Assignment > n = StrN() {anode.setType("String"); } < Semicolon >
+{
+  anode.setVarName(t.image);
+  anode.addChild(n);
+  return anode;}
+| < Int > t=< Id > <Assignment > n = N() {anode.setType("Double"); } < Semicolon >
+{
+  anode.setVarName(t.image);
+  anode.addChild(n);
+  return anode;}
+| < Bool > t=< Id > <Assignment > n = BoolN() {anode.setType("String"); } < Semicolon >
+{
+  anode.setVarName(t.image);
+  anode.addChild(n);
+  return anode;}}
+
+     
+varCondNode varCondition(): {
+  varCondNode n = new varCondNode();
+  AbstractTreeNode n1,n2;
+  Token t,t1;
+}{
+t1 = < Id >  t = < Compare > n2 = N()
+{
+  n.addChild(n2);
+  n.setStr(t1.image);
+  n.setOperator(t.image);
+  return n;
+} }
+
+ConstantNode N():
+{Token t1,t2=null,t3=null;}
+{(
+    t1 = < Number > (t2=< Plus > t3=< Number > )?
+  )
+  {ConstantNode cn = new ConstantNode();
+      if (t2==null && t3==null) { 
+      cn.setValue(Double.parseDouble(t1.image));
+       }
+      else {
+        switch (t2.image) { 
+        case "+":
+        cn.setValue((Double.parseDouble(t1.image)+Double.parseDouble(t3.image)));
+        break;
+        case "-":
+        cn.setValue((Double.parseDouble(t1.image)-Double.parseDouble(t3.image)));
+        break;
+        case "*":
+        cn.setValue((Double.parseDouble(t1.image)*Double.parseDouble(t3.image)));
+        break;
+        case "/":
+        cn.setValue((Double.parseDouble(t1.image)/Double.parseDouble(t3.image)));
+        break;}}
+      return cn;}}
+
+ConstantNode StrN():
+{Token t=null;}
+{
+  (
+    < StringQuat >
+    t=< Id >
+    < StringQuat >
+)
+  {
+      ConstantNode cn = new ConstantNode();
+      cn.setStrValue(t.image); 
+      return cn;
+  }
+}
+
+ConstantNode BoolN():
+{Token t1=null;}
+{
+  (
+    t1 = < True > | < False >
+)
+  {
+      ConstantNode cn = new ConstantNode();
+      cn.setStrValue(t1.image); 
+      return cn;
+  }
+}
+
+whileNode whileStmt2(): {
+whileNode wRes=new whileNode();
+AbstractTreeNode ATN1,ATN2;
+ BlockNode cn = new BlockNode();
+ Token t1=null,t=null,t2=null,t3=null,t4=null;}{
+< While > <LeftParenthesis > (t1 = < Id > t = < Compare >  t2 = < Number > | t3=< True > | t4=< False >)
+{ if (t3==null && t4==null) { 
+      ATN1=vV(t1,t,t2); }
+      else if (t1==null && t3==null) {ATN1=TorF("false"); }
+      else { ATN1=TorF("true"); }
+          }
+< RightParenthesis >
+< LeftBrace > (ATN2 = assignStmt() | ATN2 = ForStmt() | ATN2=whileStmt2()
+{cn.addChild(ATN2);
+wRes.addChild(ATN1);
+    wRes.addChild(cn); }
+
+| ATN2 = ifStmt()
+{wRes.addChild(ATN1);
+    wRes.addChild(ATN2); } )+
+ < RightBrace >
+    < InputEnd >
+  { if(t3==null&& t4==null) { 
+    wRes.setCondValue(Double.parseDouble(t2.image));
+    wRes.setStr(t1.image); }
+    else{
+      wRes.setCondValue(600000000);}
+    System.out.println("While done"); 
+    return wRes;  } }
+
+ varCondNode vV(Token t1,Token t,Token t2): {
+  varCondNode n = new varCondNode();
+  AbstractTreeNode n1,n2;
+}{{
+  n2 = N1(t2);
+n.addChild(n2);
+  n.setStr(t1.image);
+  n.setOperator(t.image);
+  return n;
+  } }
+
+ConstantNode N1(Token t):{}{{
+      ConstantNode cn = new ConstantNode();
+      cn.setValue(Double.parseDouble(t.image));
+      return cn;}}
+
+
+TorFCondNode TorF(String b): { } {
+  { TorFCondNode tf=new TorFCondNode();
+if(b=="true") {
+tf.setType("true"); }
+else { 
+  tf.setType("false"); }
+return tf;
+} }
+
+forNode ForStmt(): {
+forNode fRes=new forNode();
+AbstractTreeNode ATN1,ATN2;
+ BlockNode cn = new BlockNode();
+ Token t1,t,t2,t3,t4,t5,t6=null,t7=null;}{
+< For > <LeftParenthesis > t1 = < Id > <Assignment > t2 = < Number > < Semicolon >
+t1 = < Id > t = < Compare > t3 = < Number > < Semicolon >
+t1 = < Id > t4=< IncDec > t5= < Number >
+{ ATN1=forCond(t2,t3,t);
+fRes.addChild(ATN1);
+fRes.setVStr(t1.image);}
+ < RightParenthesis > < LeftBrace > (ATN2 = assignStmt()
+ {cn.addChild(ATN2);
+    fRes.addChild(cn); }
+ | ATN2 = ForStmt()
+ {cn.addChild(ATN2);
+    fRes.addChild(cn);}
+ | ATN2=whileStmt2()
+ {cn.addChild(ATN2);
+    fRes.addChild(cn);}
+ | ATN2 = ifStmt()
+ {fRes.addChild(ATN2);
+     fRes.setAddIF();})+
+    < RightBrace > < InputEnd >
+  { fRes.setInitValue(Double.parseDouble(t2.image));
+    fRes.setFinValue(Double.parseDouble(t3.image));
+    fRes.setOperator(t4.image);
+    fRes.setIncDecVal(Double.parseDouble(t5.image));
+    System.out.println("for done"); 
+    return fRes;  }}
+
+ ConditionNode forCond(Token t1,Token t2,Token t3):
+{ConditionNode n = new ConditionNode();
+  AbstractTreeNode n1,n2;
+  Token t;
+}{{
+  n1 =N1(t1);
+  n2 = N1(t2);
+  n.addChild(n1);
+  n.addChild(n2);
+  n.setOperator(t3.image);
+  return n;
+} }
+
+doWhileNode dowhileStmt(): {
+doWhileNode dwRes=new doWhileNode();
+AbstractTreeNode ATN1=null,ATN2=null;
+ BlockNode cn = new BlockNode();
+Token t1=null,t=null,t2=null,t3=null,t4=null;
+  }{
+< DO > < LeftBrace > (ATN2 = assignStmt() {cn.addChild(ATN2);
+ dwRes.addChild(cn); }
+| ATN2 = ForStmt() {cn.addChild(ATN2);
+ dwRes.addChild(cn); }
+| ATN2=whileStmt2() {cn.addChild(ATN2);
+ dwRes.addChild(cn); }
+| ATN2 = ifStmt()
+{dwRes.addChild(ATN2);}
+)+  < RightBrace >
+< While > <LeftParenthesis > (t1 = < Id > t = < Compare >  t2 = < Number > | t3=< True > | t4=< False >)
+ < RightParenthesis > 
+    { if (t3==null && t4==null) { 
+      ATN1=vV(t1,t,t2); }
+      else if (t1==null && t3==null) {ATN1=TorF("false"); }
+      else { ATN1=TorF("true"); } }
+    < InputEnd >
+  { dwRes.addChild(ATN1);
+    if(t3==null&& t4==null) { 
+    dwRes.setCondValue(Double.parseDouble(t2.image));
+    dwRes.setStr(t1.image); }
+    else{
+      dwRes.setCondValue(600000000);}
+    System.out.println("doWhile done"); 
+    return dwRes;  }}
+
+inputNode inputStmt(): {
+  inputNode in=new inputNode();
+  AbstractTreeNode ATN1,ATN2;
+ BlockNode cn = new BlockNode();
+ Token t1,t,t2;
+} {
+< Scanner > t1=< Id > <Assignment > <New > <Scanner > <LeftParenthesis > < Input > < RightParenthesis > < Semicolon >
+(  < String > <Id > <Assignment > t1=< Id > <Dot > <Next > <LeftParenthesis > < RightParenthesis > < Semicolon > {in.getStr=true;
+    return in; }
+| < Int > <Id > <Assignment > t1=< Id > <Dot > <NextInt > <LeftParenthesis > < RightParenthesis > < Semicolon > {in.getInt=true;
+    return in; })
+}
+
+outputNode outputStmt(): {
+  outputNode out=new outputNode();
+  AbstractTreeNode ATN1,ATN2;
+ BlockNode cn = new BlockNode();
+ Token t=null,t1=null,t2; }
+ { < Output > <LeftParenthesis > ("\"" t=< Id > "\"" 
+ {out.setStrValue(t.image); }
+	
+	| t1= < Number >
+ { out.setValue(Double.parseDouble(t1.image));})
+< RightParenthesis > < Semicolon >
+{return out;}
+    }
+
+switchNode switchStmt(): {
+  switchNode sw=new switchNode();
+  AbstractTreeNode ATN1,ATN2;
+Token t1,t2;
+  } {
+< Switch > <LeftParenthesis > t1=< Id > < RightParenthesis > < LeftBrace >
+(ATN1=caseEX() 
+{System.out.println("switch done");
+  sw.addChild(ATN1);
+})+
+(ATN2=defaultEX() {sw.addChild(ATN2); })
+< RightBrace >
+{sw.setId(t1.image);
+  return sw;
+ }}
+
+caseNode caseEX(): {
+caseNode c=new caseNode();
+AbstractTreeNode ATN1=null,nn=null;
+ BlockNode cn = new BlockNode();
+  Token t1,t2=null;} {
+  < Case > t1=< Number > <DoubleDot > (ATN1=assignStmt() {cn.addChild(ATN1); c.addChild(cn); })*
+  (    nn=expr() < Semicolon >
+{ c.addChild(nn);
+})
+{ c.setVal(Double.parseDouble(t1.image));
+return c;
+}}
+
+defaultNode defaultEX(): {
+defaultNode d=new defaultNode();
+AbstractTreeNode ATN1=null,nn=null;
+ BlockNode cn = new BlockNode();
+  Token t1,t2=null;} {
+  < Default > <DoubleDot > (ATN1=assignStmt() {cn.addChild(ATN1); d.addChild(cn); })*
+  (
+    nn=expr() < Semicolon >
+{ d.addChild(nn);
+})
+{
+return d;
+} }
+
+
+exprNode expr(): {
+  exprNode ex=new exprNode();
+Token t5=null,t6=null;
+  } {
+(t5=< BREAK > | t6=< CONTINUE >)
+{
+  if(t6==null) {
+    ex.isbreak=true;
+  ex.setStrValue("break"); }
+  if(t5==null) { ex.setStrValue("continue");}
+return ex;
+}}
+
+
+
+
